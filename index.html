@@ -1,0 +1,422 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Introduction to Cats</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-transition="none">
+					<h1>Scalaz</h1>
+          <h1 style="visibility:hidden">Cats</h1>
+					<h2 style="visibility:hidden">http://typelevel.org/cats/</h2>
+          <img style="visibility:hidden" src="images/cats_logo.png" />
+				</section>
+
+				<section data-transition="fade">
+					<h1><strike>Scalaz</strike><h1>
+					<h1>Cats</h1>
+					<h2>http://typelevel.org/cats/</h2>
+          <img src="images/cats_logo.png" />
+				</section>
+
+        <section>
+          <h2>What are Scalaz / Cats</h2>
+          Functionnal programming libraries - General Utility
+          for Scala
+          <img src="images/toolbox.jpg" width="500px" />
+        </section>
+
+        <section data-transition="slide">
+          <h2>Why not Scalaz?</h2>
+
+            <p class="fragment">The community</p>
+            <p class="fragment">The lack of documentation... <strong class="fragment">on purpose</strong></p>
+            <pre class="fragment"><code class="scala" data-trim>
+  def contra[T[-_], A, A2](a: A <~< A2): (T[A2] &lt;~&lt; T[A]) =
+      a.subst[λ[`-α` => T[A2] &lt;~&lt; T[α]]](refl)
+  	  </code></pre>
+            <pre class="fragment"><code >/**We can lift subtyping into any contravariant type constructor */</code></pre>
+            <p class="fragment">Symbols everywhere</p>
+            <pre class="fragment"><code class="scala" data-trim>
+(1 |-> 5) >>= (_ |--> (2,10))
+// is the same as
+(1 to 5).flatMap(x => x to 10 by 2)
+            </code></pre>
+        </section>
+
+        <section>
+          <h2>So why Cats ?</h2>
+          <ul>
+            <li class="fragment">Community (TypeLevel project)</li>
+            <li class="fragment">Documentation</li>
+          </ul>
+        </section>
+
+        <section>
+          <p>But they are the same</p>
+          <p>Everything written with cats <br />can be written with scalaz</p>
+        </section>
+
+        <section>
+          <h2>How to start?</h2>
+          <ul>
+            <li>Read the doc, <span class="fragment">because there is one (<a href="http://typelevel.org/cats/">http://typelevel.org/cats</a>)</span></li>
+            <li class="fragment">Read the FAQ (<a href="https://github.com/typelevel/cats/blob/master/docs/src/main/tut/faq.md">https://github.com/typelevel/cats/blob/master/docs/src/main/tut/faq.md</a>)</li>
+            <li class="fragment"><code>libraryDependencies += "org.typelevel" %% "cats" % "0.9.0"</code></li>
+            <li class="fragment">Enjoy</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>What can we do with Cats</h2>
+          <img src="images/cats-computer.gif" />
+        </section>
+
+        <section>
+          <h2>NonEmptyList</h2>
+          <pre><code data-trim class="scala">
+def first(numbers: List[Int]): Int = numbers.head
+
+first(List(1,2,3)) // 1
+first(List.empty)
+// java.util.NoSuchElementException: head of empty list
+          </code></pre>
+
+          <pre><code data-trim class="scala">
+def first(nel: NonEmptyList[Int]): Int = nel.head
+
+first(NonEmptyList.of(1,2,3)) // 1
+          </code></pre>
+
+          <pre><code data-trim class="scala">
+
+// An empty List in SQL "IN" trigger an error
+def findEmail(ids: NonEmptyList[Int]) = {
+  """SELECT email
+     FROM users
+     WHERE id in (${ids.toList.mkString(",")})
+  """
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Traverse.sequence</h2>
+          <code>F[G[A]] -> G[F[A]]</code><br/>
+
+          <pre><code data-trim class="scala">
+import cats.instances.all._
+import cats.syntax.traverse._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val maybeEventualEmail: Option[Future[String]] =
+      Some(Future.successful("admin@mnubo.com"))
+
+val eventualMaybeEmail: Future[Option[String]] =
+      maybeEventualEmail.sequence
+
+val listMaybeInt: List[Either[String, Int]] =
+      List(Right(1), Right(3))
+
+//sequenceU because Either has 2 parameters
+val maybeListInt: Either[String, List[Int]] =
+      listMaybeErrors.sequenceU
+          </pre></code>
+        </section>
+
+        <section>
+          <h2>Traverse.flatSequence</h2>
+          <pre><code data-trim class="scala">
+import cats.instances.all._
+import cats.syntax.traverse._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
+def findCurrentUserId(): Option[Long] = ???
+
+def findNameByUserId(id: Long): Future[Option[String]] = ???
+
+def findCurrentName(): Future[Option[String]] = {
+  val eventualName: Option[Future[Option[String]]] =
+    findCurrentUserId().map(findNameByUserId)
+
+  eventualName.flatSequence
+}
+
+          </code></pre>
+        </section>
+
+
+        <section>
+          <h2>Validation - Option</h2>
+          <pre><code data-trim class="scala">
+case class User(id:Int, name:String)
+
+def isPositive(i: Int): Option[Int] = if(i > 0) Some(i) else None
+def nonEmpty(s: String): Option[String] =
+  if (!s.isEmpty) Some(s) else None
+
+def validate(id:Int, name:String):Option[User] = for {
+ okId   &lt;- isPositive(id)
+ okName &lt;- nonEmpty(name)
+} yield User(okId, okName)
+
+validate( 1, "Georges") // Some(User(1, "Georges"))
+validate( 1, "")        // None
+validate(-1, "Georges") // None
+validate(-1, "")        // None
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Validation - Either 2.12</h2>
+          <pre><code data-trim>
+def validate(id:Int, name:String): Either[String, User] = for {
+  okId   &lt;- isPositive(id) toRight s"id $id must be > 0"
+  okName &lt;- nonEmpty(name) toRight "name must be non empty"
+} yield User(okId, okName)
+
+validate( 1, "Georges") // Right(User(1,Georges))
+validate( 1, "")        // Left(name must be non empty)
+validate(-1, "Georges") // Left(id -1 must be > 0)
+validate(-1, "")        // Left(id -1 must be > 0)
+  </code></pre>
+        </section>
+
+        <section>
+          <h2>Validation - Validated</h2>
+          <pre><code data-trim>
+import cats.syntax.option._
+import cats.syntax.cartesian._
+
+def validate(id:Int, name:String):ValidatedNel[String, User] = {
+  ( isPositive(id).toValidNel(s"id $id must be > 0")    |@|
+    nonEmpty(name).toValidNel("name must be non empty")
+    ).map(User.apply)
+}
+
+validate(1, "Georges")  // Valid(User(1,Georges))
+validate(1, "")         // Invalid(NonEmpty[name must be non empty])
+validate(-1, "Georges") // Invalid(NonEmpty[id -1 must be > 0])
+validate(-1, "")
+// Invalid(NonEmpty[id -1 must be > 0,name must be non empty])
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Big Bad Words incoming</h2>
+          <img src="images/warning.jpg" />
+        </section>
+
+        <section>
+          <h2>MonadTransformer</h2>
+<pre><code data-trim class="scala">
+def findName(): Future[Option[String]] = ???
+
+val result: Future[Option[Long]] =
+  findName().map(_.map(_.length))
+
+
+</code></pre>
+<pre><code data-trim class="scala">
+def findName(): Future[Option[String]] = ???
+val result: Future[Option[Long]] =
+  OptionT(findName()).map(_.length).value
+</code></pre>
+        </section>
+
+        <section>
+          <h2>MonadTransformer</h2>
+<pre><code data-trim class="scala">
+def findCurrentUserId(): Future[Option[Long]] = ???
+
+def findNameByUserId(id: Long): Future[Option[String]] = ???
+
+def findCurrentName(): Future[Option[String]] = {
+ val eventualMaybeName: OptionT[Future, String] = for {
+     userId &lt;- OptionT(findCurrentUserId())
+     name &lt;- OptionT(findNameByUserId(userId))
+   } yield name
+ )
+
+ eventualMaybeName.value
+}
+</code></pre>
+        </section>
+
+        <section>
+          <h2>Some more abstract things</h2>
+          <h3>(If we have time)</h3>
+        </section>
+
+        <section>
+          <h2>Typeclasses</h2>
+          <ul>
+            <li>A way to dynamically add methods to existing object</li>
+            <li>Can be seen as some kind of <code>trait</code> implemented on the fly</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Functor</h2>
+          <ul>
+            <li>A class with one type parameter</li>
+            <li>and the <code>map</code> method</li>
+            <li>List, Option, Future, Try, etc.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Example</h2>
+          <pre><code data-trim class="scala">
+def add1(o: Option[Int]): Option[Int] = o.map(_ + 1)
+def add1(o: Future[Int]): Future[Int] = o.map(_ + 1)
+          </code></pre>
+          <pre class="fragment"><code data-trim class="scala">
+import cats.Functor
+import cats.implicits._
+
+def add1[M[_]: Functor](o: M[Int]):M[Int] = o.map(_ + 1)
+
+add1(Option(2)) // Some(3)
+add1(Try(5)) // Success(6)
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Applicative</h2>
+          <ul>
+            <li>A class with one type parameter</li>
+            <li>an <code>ap</code> method <br /> <code>def ap(ff: F[A => B])(f:F[A]):F[B]</code></li>
+            <li>and a constructor named <code>pure</code></li>
+            <li>List, Option, Future, Try, etc.</li>
+          </ul>
+          <p class="fragment">Traverse.sequence (<code>F[G[A]] => G[F[A]]</code>) works only if <br/>F is a <em>Functor</em> and <br/>G is an <em>Applicative</em></p>
+        </section>
+
+        <section>
+          <h2>Monad</h2>
+          <ul>
+            <li>A class with one type parameter</li>
+            <li>the <code>flatMap</code> method</li>
+            <li>and a constructor named <code>pure</code></li>
+            <li>List, Option, Future, Try, etc.</li>
+          </ul>
+
+          <p class="fragment"><em>MonadTransformer</em> only works with 2 Monads</p>
+          <p class="fragment">Theoritically, <em>for comprehension</em> works correctly only with Monad</p>
+        </section>
+
+        <section>
+          <h2>An Example</h2>
+          <pre><code data-trim class="scala">
+sealed trait ApiResponse[+A]
+case class ApiSuccess[A](content: A) extends ApiResponse[A]
+case class ApiError(status: Int) extends ApiResponse[Nothing]
+
+val l: List[ApiResponse[Int]] = List(
+  ApiSuccess(1),
+  ApiSuccess(10),
+  ApiSuccess(100)
+)
+          </code></pre>
+
+
+        </section>
+
+        <section>
+          <h2>An Example</h2>
+
+<pre style="font-size:1rem"><code data-trim class="scala">
+implicit val  applicativeApiResponse: Applicative[ApiResponse] =
+  new Applicative[ApiResponse] {
+    override def pure[A](a: A): ApiResponse[A] = ApiSuccess(a)
+
+    override def ap[A, B](ff: ApiResponse[(A) => B])(fa: ApiResponse[A]):ApiResponse[B] =
+      fa match {
+        case ApiSuccess(content) => ff match {
+          case ApiSuccess(f) => ApiSuccess(f(content))
+          case err@ApiError(_) => err
+        }
+        case err@ApiError(_) => err
+      }
+  }
+
+val s:ApiResponse[List[Int]] = l.sequence
+
+l.head.map(_ + 1)
+          </code></pre>
+
+        </section>
+
+        <section>
+          <h2>Other things</h2>
+          <ul>
+            <li>other Type classes (Monoid, Foldable, Traverse, Apply, etc.)</li>
+            <li>Free</li>
+            <li>State</li>
+            <li>etc.</li>
+          </ul>
+        </section>
+
+
+
+        <section>
+          <h2>Typelevel</h2>
+          <p><a href="http://typelevel.org/">http://typelevel.org</a>
+          <ul>
+              <li>Shapeless (type level programming)</li>
+              <li>Doobie (SQL)</li>
+              <li>Monocle (Lenses)</li>
+              <li>Scalacheck (Property based testing)</li>
+              <li>Simulacrum (Type classes)</li>
+              <li>etc.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Questions?</h2>
+        </section>
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				history: true,
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
